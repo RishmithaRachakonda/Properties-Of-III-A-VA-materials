@@ -1,0 +1,2 @@
+IIIA-VA/1_Data/jarvis_dft_3d_raw.csv filter=lfs diff=lfs merge=lfs -text
+1_Data/jarvis_dft_3d_raw.csv filter=lfs diff=lfs merge=lfs -text
