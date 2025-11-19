@@ -1,0 +1,38 @@
+optb88vdw_bandgap Prediction — Evaluation Metrics
+------------------------------------------------
+
+Dataset Summary
+---------------
+Total III–V entries after filtering: 244
+Final dataset used for training/testing: 244 samples
+Train/Test split: 195 train, 49 test
+Target property: optb88vdw_bandgap
+
+Features used (Top 10):
+  mass_sum
+  structural_density
+  avg_valence
+  avg_molar_volume
+  lattice_b
+  Z_diff
+  avg_melting_point
+  polarizability_est
+  spg_number
+  Z_sum
+
+
+Training Performance
+--------------------
+Train R²: 0.994
+
+Test Performance
+----------------
+Test R²:   0.949
+Test MAE:  0.2689
+Test RMSE: 0.4362
+
+Notes
+-----
+• The model uses an XGBoost regressor trained on engineered structural and composition features.
+• MAE and RMSE are in the same units as the dataset's bandgap values.
+• Test R² indicates generalization quality.
