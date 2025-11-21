@@ -93,4 +93,3 @@ python 2_ML_train/formation_energy_prediction.py
 - xgboost
 - matplotlib
 - tqdm
-
