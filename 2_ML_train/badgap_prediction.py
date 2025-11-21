@@ -1,5 +1,3 @@
-
-
 import pandas as pd
 import numpy as np
 from pymatgen.core import Composition, Element
@@ -12,7 +10,7 @@ from tqdm import tqdm
 import warnings
 warnings.filterwarnings("ignore")
 
-print("📦 Loading JARVIS-DFT data...")
+print("Loading JARVIS-DFT data...")
 
 # -------------------------------
 # Load dataset (multiple fallback options)
@@ -21,17 +19,17 @@ try:
     from jarvis.db.figshare import data
     dft_3d = data("dft_3d")
     df = pd.DataFrame(dft_3d)
-    print("✅ Loaded from JARVIS package")
+    print("Loaded from JARVIS package")
 except Exception:
     try:
         df = pd.read_json("dft_3d.json")
-        print("✅ Loaded from local JSON file")
+        print("Loaded from local JSON file")
         for col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
     except Exception:
         try:
             df = pd.read_csv("dft_3d.csv")
-            print("✅ Loaded from local CSV file")
+            print("Loaded from local CSV file")
             for col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
         except Exception:
@@ -62,7 +60,7 @@ if "formula" not in df.columns:
     raise ValueError(" 'formula' column not found in dataset. Cannot filter III–V compounds.")
 
 df = df[df["formula"].apply(is_strict_III_V)].reset_index(drop=True)
-print(f"✅ Strict III–V semiconductors found: {len(df)}")
+print(f"Strict III–V semiconductors found: {len(df)}")
 if len(df) == 0:
     raise ValueError(" No III–V semiconductors found — check dataset version or 'formula' column.")
 
@@ -78,7 +76,7 @@ non_dft_features = [
 ]
 spg_cols = [c for c in df.columns if c.startswith('spg_symbol_')]
 available_non_dft = [f for f in non_dft_features if f in df.columns]
-print(f"\n📊 Found {len(available_non_dft)} non-DFT features + {len(spg_cols)} space group features")
+print(f"Found {len(available_non_dft)} non-DFT features + {len(spg_cols)} space group features")
 
 # -------------------------------
 # Extract structural features from 'atoms' field
@@ -95,7 +93,6 @@ def extract_structural_features(atoms_dict):
         angles = atoms_dict.get('angles', [90, 90, 90])
         alpha, beta, gamma = angles[0], angles[1], angles[2]
         lattice_anisotropy = max(abc) / min(abc) if min(abc) > 0 else 1
-        # Volume calculation (general triclinic formula)
         volume = a * b * c * np.sqrt(
             1 - np.cos(np.radians(alpha))**2
               - np.cos(np.radians(beta))**2
@@ -124,7 +121,7 @@ def extract_structural_features(atoms_dict):
                 'is_cubic','is_orthogonal','avg_lattice_constant','atoms_per_cell',
                 'structural_density']}
 
-print("\n🔬 Extracting structural features from 'atoms' field...")
+print("\nExtracting structural features from 'atoms' field...")
 structural_features = []
 for idx, row in tqdm(df.iterrows(), total=len(df), desc="Structural"):
     atoms_dict = row.get('atoms', {})
@@ -139,41 +136,53 @@ def extract_enhanced_features(row):
         comp = Composition(row.formula)
         elems = [Element(e) for e in comp.elements]
         fracs = [comp.get_atomic_fraction(e.symbol) for e in elems]
-        # Ensure III element first (for consistent naming)
+
         if elems[0].symbol in group_15:
             elems = elems[::-1]
             fracs = fracs[::-1]
+
         elem_III, elem_V = elems[0], elems[1]
         frac_III, frac_V = fracs[0], fracs[1]
+
         en_III, en_V = elem_III.X or 0, elem_V.X or 0
         en_diff = abs(en_III - en_V)
-        en_ratio = en_V / en_III if en_III and en_III != 0 else 1.0
+        en_ratio = en_V / en_III if en_III else 1.0
+
         Z_III, Z_V = elem_III.Z, elem_V.Z
         Z_diff, Z_sum = abs(Z_III - Z_V), Z_III + Z_V
+
         r_III = elem_III.atomic_radius or getattr(elem_III, "atomic_radius_calculated", None) or 1.0
         r_V = elem_V.atomic_radius or getattr(elem_V, "atomic_radius_calculated", None) or 1.0
         r_sum, r_diff = (r_III + r_V), abs(r_III - r_V)
-        r_ratio = r_III / r_V if r_V and r_V != 0 else 1.0
-        size_mismatch = r_diff / r_sum if r_sum and r_sum != 0 else 0
+        r_ratio = r_III / r_V if r_V else 1.0
+        size_mismatch = r_diff / r_sum if r_sum else 0
+
         mass_III, mass_V = elem_III.atomic_mass or 0, elem_V.atomic_mass or 0
         mass_sum, mass_diff = mass_III + mass_V, abs(mass_III - mass_V)
-        mass_asymmetry = abs(np.log(mass_III / mass_V)) if (mass_III and mass_V and mass_V != 0) else 0
-        ionicity = en_diff / (en_III + en_V) if (en_III + en_V) and (en_III + en_V) != 0 else 0
+        mass_asymmetry = abs(np.log(mass_III / mass_V)) if (mass_III and mass_V) else 0
+
+        ionicity = en_diff / (en_III + en_V) if (en_III + en_V) else 0
         covalency = 1 - ionicity
+
         molar_vol_III = elem_III.molar_volume or 0
         molar_vol_V = elem_V.molar_volume or 0
         avg_molar_volume = frac_III * molar_vol_III + frac_V * molar_vol_V
+
         mp_III = elem_III.melting_point or 0
         mp_V = elem_V.melting_point or 0
         avg_melting_point = frac_III * mp_III + frac_V * mp_V
         mp_diff = abs(mp_III - mp_V)
+
         avg_valence = frac_III * 3 + frac_V * 5
         has_d_electrons = int(Z_III > 30 or Z_V > 30)
+
         ea_III = elem_III.electron_affinity or 0
         ea_V = elem_V.electron_affinity or 0
         ea_diff = abs(ea_III - ea_V)
+
         polarizability_est = (r_III**3 + r_V**3) / 2
         period_diff = abs(elem_III.row - elem_V.row)
+
         return pd.Series({
             "en_diff": en_diff, "en_ratio": en_ratio,
             "Z_diff": Z_diff, "Z_sum": Z_sum,
@@ -197,11 +206,10 @@ def extract_enhanced_features(row):
             "period_diff"
         ]})
 
-print("🔬 Extracting enhanced composition features...")
+print("Extracting enhanced composition features...")
 enhanced_features = [extract_enhanced_features(r) for r in tqdm(df.itertuples(), total=len(df), desc="Composition")]
 enhanced_df = pd.DataFrame(enhanced_features)
 
-# Merge features into main df
 df = pd.concat([df.reset_index(drop=True), structural_df, enhanced_df], axis=1)
 
 # -------------------------------
@@ -233,7 +241,7 @@ if len(valid_selected) == 0:
     raise ValueError(" None of the requested selected features exist in the dataframe!")
 
 all_features = valid_selected
-print(f"\n✅ Using {len(all_features)} manually selected features:")
+print(f"\nUsing {len(all_features)} manually selected features:")
 print(all_features)
 
 # -------------------------------
@@ -242,7 +250,7 @@ print(all_features)
 target_col = "optb88vdw_bandgap"
 if target_col not in df.columns:
     raise ValueError(f" Target column '{target_col}' not found in dataframe.")
-print(f"✅ Predicting target: {target_col}")
+print(f"Predicting target: {target_col}")
 
 # -------------------------------
 # Handle missing/infinite/large values -- fill with median
@@ -255,12 +263,11 @@ for col in all_features + [target_col]:
         if df[col].isnull().any():
             df[col] = df[col].fillna(df[col].median())
 
-# Drop rows where the target is missing
 df = df.dropna(subset=[target_col]).reset_index(drop=True)
 
-print(f"\n✅ Using {len(all_features)} features")
-print(f"✅ Target: {target_col}")
-print(f"✅ Final dataset size: {len(df)}")
+print(f"\nUsing {len(all_features)} features")
+print(f"Target: {target_col}")
+print(f"Final dataset size: {len(df)}")
 if len(df) < 20:
     print("\n  WARNING: Very small dataset! Results may not be reliable.")
 
@@ -283,7 +290,7 @@ X_train, X_test, y_train, y_test = train_test_split(X_scaled_df, y, test_size=te
 # -------------------------------
 # Clean training data for problematic values
 # ------------------------------
-print("\n Cleaning training data before XGBoost...")
+print("\nCleaning training data before XGBoost...")
 for col in X_train.columns:
     if X_train[col].isnull().any() or np.isinf(X_train[col]).any() or (X_train[col].abs() > 1e10).any():
         median_val = X_train[col].median()
@@ -298,7 +305,7 @@ if y_train.isnull().any() or np.isinf(y_train).any() or (y_train.abs() > 1e10).a
 # -------------------------------
 # Train XGBoost regressor
 # -------------------------------
-print("\n Training XGBoost model...")
+print("\nTraining XGBoost model...")
 xgb = XGBRegressor(
     n_estimators=2000,
     learning_rate=0.02,
@@ -336,7 +343,7 @@ print("="*90)
 # -------------------------------
 # Feature importance
 # -------------------------------
-print("\n🔍 Feature importances:")
+print("\nFeature importances:")
 importances = xgb.feature_importances_
 feature_importance_df = pd.DataFrame({
     'feature': all_features,
@@ -360,5 +367,5 @@ ax.legend()
 
 plt.tight_layout()
 plt.savefig('iii_v_bandgap_selected_features_predictions.png', dpi=300, bbox_inches='tight')
-print("\n Prediction plot saved to 'iii_v_bandgap_selected_features_predictions.png'")
-print("\n Analysis complete!")
+print("\nPrediction plot saved to 'iii_v_bandgap_selected_features_predictions.png'")
+print("\nAnalysis complete!")
