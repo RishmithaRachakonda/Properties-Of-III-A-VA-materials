@@ -1,125 +1,96 @@
-# Prediction of Bandgap, Formation Energy, and Bulk Modulus of IIIA–VA Semiconductors using XGBoost
+# Prediction of bandgap, formation energy and bulk modulus of IIIA-VA group materials using ML model (XGBoost)
 
-This repository contains a machine-learning based framework for predicting key electronic and mechanical properties of IIIA–VA semiconductor materials. Using XGBoost, the model estimates **bandgap**, **formation energy**, and **bulk modulus** of binary IIIA–VA compounds with high accuracy, offering a fast alternative to Density Functional Theory (DFT) calculations.
+## Overview
+This project develops machine-learning models using XGBoost to predict three key properties of IIIA–VA semiconductor materials:
+
+- **Bandgap (eV)**
+- **Bulk Modulus (GPa)**
+- **Formation Energy (eV/atom)**
+
+These properties are usually obtained through Density Functional Theory (DFT), which is accurate but computationally expensive. This project replaces DFT with fast ML surrogate models using structural and compositional features extracted from the JARVIS-DFT dataset.
+
+A detailed explanation of the methodology and results is provided in `4_reports/MLMI_Report.pdf`.
+
+---
+## Dataset
+
+**Source:** JARVIS-DFT
+
+Only strict IIIA–VA binary compounds were selected.
+
+**Elements used for filtering:**
+
+- **Group IIIA:** B, Al, Ga, In, Tl  
+- **Group VA:** N, P, As, Sb, Bi
+
+The dataset includes structural information such as lattice parameters, atomic positions, and DFT-computed material properties.
 
 ---
 
-## ✨ Project Overview
-Traditional DFT calculations are accurate but computationally expensive, often requiring hours or days per material.  
-This project builds a surrogate ML model using **254 DFT-computed IIIA–VA compounds** (sourced from the Materials Project) to perform high-speed property prediction.
+## Method Summary
 
-The model uses **145 compositional + structural features**, enabling accurate predictions with significantly reduced computation time.
+Each prediction script follows this workflow:
 
----
+### 1. Load Data
+- Load the JARVIS-DFT dataset.
+- Apply strict IIIA–VA compositional filtering.
 
-## 🧪 Target Properties
-The model predicts the following material properties:
+### 2. Extract Structural Features
+- Lattice constants: *a, b, c*
+- Angles: *alpha, beta, gamma*
+- Unit cell volume
+- Interatomic distance statistics
 
-- **Bandgap (eV)** – Governs optical/electronic behavior  
-- **Formation Energy (eV/atom)** – Stability indicator  
-- **Bulk Modulus (GPa)** – Mechanical stiffness  
-
----
-
-## 📁 Dataset
-- Dataset source: **The Materials Project**  
-- Filtering: Only binary combinations of  
-  - Group IIIA: B, Al, Ga, In, Tl  
-  - Group VA: N, P, As, Sb, Bi  
-- Final dataset size: **254 compounds**
-
-Each material entry contains:
-- DFT-calculated target properties  
-- Crystal structure (lattice parameters, atoms)  
-- Elemental descriptors (electronegativity, atomic mass, etc.)
-
----
-
-## 🧩 Feature Engineering
-Two major feature categories were used:
-
-### **1. Compositional Features**
-Examples:
-- Electronegativity difference (en_diff)  
-- Atomic mass sum/diff  
+### 3. Extract Compositional Features
+- Electronegativity difference  
+- Atomic number and atomic mass relations  
 - Average valence electrons  
-- Polarizability estimate  
-- Average melting point  
 - Molar volume  
+- Melting point  
 
-### **2. Structural Features**
-Derived from atomic coordinates and lattice:
+### 4. Preprocessing
+- Clean the dataset  
+- Standardize and scale the features  
 
-- Lattice constants (a, b, c)  
-- Lattice angles (α, β, γ)  
-- Unit cell volume  
-- Structural density  
-- Minimum/average interatomic distances  
+### 5. Model Training
+- Train an XGBoost regressor  
 
-A total of **145 features** were used after cleaning and normalization.
-
----
-
-## 🛠️ Methodology
-The ML workflow includes:
-
-1. Data acquisition & IIIA–VA filtering  
-2. Compositional + structural feature extraction  
-3. Feature domain mapping  
-4. Data preprocessing (missing value handling, normalization)  
-5. Model development using **XGBoost Regressor**  
-6. Multi-output regression for 3 target properties  
-7. Validation using R², MAE, RMSE  
-
-A complete pipeline diagram is shown in the report (page 8) :contentReference[oaicite:1]{index=1}.
+### 6. Evaluation
+- Metrics: R², MAE, RMSE  
+- Save trained models, metrics, and parity plots  
 
 ---
 
-## ⚙️ Model Architecture (XGBoost)
+## How to Run
 
-Key hyperparameters:
-- trees: **2000**  
-- learning_rate: **0.02**  
-- max_depth: **6**  
-- subsample: **0.8**  
-- colsample_bytree: **0.8**  
-- regularization: α = 1.0, λ = 2.0  
-- tree_method: **hist**  
+### Install dependencies
+```bash
+pip install pandas numpy pymatgen scikit-learn xgboost matplotlib tqdm
+```
+### Run Scripts
+```bash
+python 2_ML_train/bandgap_prediction.py
+python 2_ML_train/bulk_modulus_prediction.py
+python 2_ML_train/formation_energy_prediction.py
+```
+## Outputs
 
-The model was implemented using **MultiOutputRegressor** to predict all three properties simultaneously.
-
----
-
-## 📊 Results
-
-| Property | Train R² | Test R² | MAE | RMSE |
-|---------|----------|---------|------|--------|
-| **Bandgap (eV)** | 0.994 | **0.949** | 0.2689 | 0.4362 |
-| **Bulk Modulus (GPa)** | 0.999 | **0.946** | 16.971 | 26.446 |
-| **Formation Energy (eV/atom)** | 0.999 | **0.736** | 0.153 | 0.334 |
-
-📌 Parity plots (report page 10) show excellent alignment of predictions with DFT data for bandgap and bulk modulus; formation energy shows moderate scatter but remains reliable for screening.
+- **Metrics:** `3_results/metrics/*.txt`
+- **Trained Models:** `3_results/models/*.json`
+- **Plots:** `3_results/plots/*.png`
+- **Final Report:** `4_reports/MLMI_Report.pdf`
+- **Presentation:** `presentation/MLMI_PPT.pdf`
 
 ---
 
-## 🔍 Feature Importance Insights
-The model captured physically meaningful relationships:
+## Requirements
 
-- **Bandgap** → depends on valence electrons & electronic descriptors  
-- **Bulk modulus** → influenced by lattice geometry & interatomic spacing  
-- **Formation energy** → depends on mass, density, molar volume, melting point  
+- Python 3.8+
+- pandas
+- numpy
+- pymatgen
+- scikit-learn
+- xgboost
+- matplotlib
+- tqdm
 
-This confirms that the ML model is not a black box but aligns with materials science principles.
-
----
-
-## 🚀 Advantages of This ML Model
-- **Millions of times faster** than DFT  
-- Suitable for **high-throughput screening**  
-- Predicts 3 properties simultaneously  
-- Requires minimal computational resources  
-- Applicable to hypothetical new IIIA–VA materials  
-
----
-
-## 📦 Repository Structure (recommended)
